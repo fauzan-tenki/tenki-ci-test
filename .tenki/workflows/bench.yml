@@ -1,0 +1,100 @@
+# Generated from templates/bench.yml by scripts/gen-workflows.sh; edit the template, not this file.
+name: Bench
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  checkout:
+    name: checkout · tenki-ci
+    runs-on: tenki-staging-standard-medium-4c-8g
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show commit
+        run: git log -1 --format='%H %s'
+
+  go-test:
+    name: go-test · tenki-ci
+    runs-on: tenki-staging-standard-medium-4c-8g
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: false
+      - name: Vet and test
+        working-directory: bench
+        run: go vet ./... && go test ./...
+      - name: CPU benchmark
+        working-directory: bench
+        run: |
+          echo "cores: $(nproc)"
+          go test -run '^$' -bench . -benchtime 2s ./... | tee bench.txt
+          grep '^Benchmark' bench.txt | awk '{print "BENCH", $1, $3, $4}'
+
+  disk-io:
+    name: disk-io · tenki-ci
+    runs-on: tenki-staging-standard-medium-4c-8g
+    timeout-minutes: 15
+    steps:
+      - name: Write and read 1 GiB
+        run: |
+          dd if=/dev/zero of=io.bin bs=1M count=1024 conv=fdatasync 2>&1 | tail -1 | sed 's/^/BENCH write /'
+          sync && (echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null 2>&1 || true)
+          dd if=io.bin of=/dev/null bs=1M 2>&1 | tail -1 | sed 's/^/BENCH read /'
+          rm -f io.bin
+
+  cache:
+    name: cache · tenki-ci
+    runs-on: tenki-staging-standard-medium-4c-8g
+    timeout-minutes: 15
+    steps:
+      - id: restore
+        uses: actions/cache@v4
+        with:
+          path: blob
+          key: bench-blob-v1-tenki-ci
+      - name: Create 100 MiB blob on miss
+        if: steps.restore.outputs.cache-hit != 'true'
+        run: mkdir -p blob && head -c 104857600 /dev/urandom > blob/data
+      - name: Report
+        run: echo "BENCH cache-hit ${{ steps.restore.outputs.cache-hit || 'false' }}" && ls -la blob
+
+  artifact-upload:
+    name: artifact-upload · tenki-ci
+    runs-on: tenki-staging-standard-medium-4c-8g
+    timeout-minutes: 15
+    steps:
+      - name: Create 20 MiB file
+        run: mkdir -p out && head -c 20971520 /dev/urandom > out/payload.bin && sha256sum out/payload.bin | tee out/payload.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: payload-tenki-ci
+          path: out/
+          retention-days: 1
+
+  artifact-download:
+    name: artifact-download · tenki-ci
+    needs: artifact-upload
+    runs-on: tenki-staging-standard-medium-4c-8g
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: payload-tenki-ci
+          path: out
+      - name: Verify checksum
+        working-directory: out
+        run: sha256sum -c payload.sha256
+
+  matrix:
+    name: matrix-${{ matrix.shard }} · tenki-ci
+    runs-on: tenki-staging-standard-medium-4c-8g
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - name: Shard
+        run: echo "shard ${{ matrix.shard }} of 3 on $(hostname)"
