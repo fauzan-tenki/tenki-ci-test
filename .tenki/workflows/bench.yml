@@ -6,7 +6,7 @@ on:
 jobs:
   checkout:
     name: checkout · tenki-ci
-    runs-on: tenki-staging-standard-medium-4c-8g
+    runs-on: tenki-staging-standard-small-2c-4g
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -15,7 +15,7 @@ jobs:
 
   go-test:
     name: go-test · tenki-ci
-    runs-on: tenki-staging-standard-medium-4c-8g
+    runs-on: tenki-staging-standard-small-2c-4g
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +35,7 @@ jobs:
 
   disk-io:
     name: disk-io · tenki-ci
-    runs-on: tenki-staging-standard-medium-4c-8g
+    runs-on: tenki-staging-standard-small-2c-4g
     timeout-minutes: 15
     steps:
       - name: Write and read 1 GiB
@@ -47,7 +47,7 @@ jobs:
 
   cache:
     name: cache · tenki-ci
-    runs-on: tenki-staging-standard-medium-4c-8g
+    runs-on: tenki-staging-standard-small-2c-4g
     timeout-minutes: 15
     steps:
       - id: restore
@@ -63,11 +63,11 @@ jobs:
 
   artifact-upload:
     name: artifact-upload · tenki-ci
-    runs-on: tenki-staging-standard-medium-4c-8g
+    runs-on: tenki-staging-standard-small-2c-4g
     timeout-minutes: 15
     steps:
       - name: Create 20 MiB file
-        run: mkdir -p out && head -c 20971520 /dev/urandom > out/payload.bin && sha256sum out/payload.bin | tee out/payload.sha256
+        run: mkdir -p out && head -c 20971520 /dev/urandom > out/payload.bin && (cd out && sha256sum payload.bin | tee payload.sha256)
       - uses: actions/upload-artifact@v4
         with:
           name: payload-tenki-ci
@@ -77,7 +77,7 @@ jobs:
   artifact-download:
     name: artifact-download · tenki-ci
     needs: artifact-upload
-    runs-on: tenki-staging-standard-medium-4c-8g
+    runs-on: tenki-staging-standard-small-2c-4g
     timeout-minutes: 15
     steps:
       - uses: actions/download-artifact@v4
@@ -90,7 +90,7 @@ jobs:
 
   matrix:
     name: matrix-${{ matrix.shard }} · tenki-ci
-    runs-on: tenki-staging-standard-medium-4c-8g
+    runs-on: tenki-staging-standard-small-2c-4g
     timeout-minutes: 15
     strategy:
       matrix:

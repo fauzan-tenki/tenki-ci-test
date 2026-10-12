@@ -67,7 +67,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Create 20 MiB file
-        run: mkdir -p out && head -c 20971520 /dev/urandom > out/payload.bin && sha256sum out/payload.bin | tee out/payload.sha256
+        run: mkdir -p out && head -c 20971520 /dev/urandom > out/payload.bin && (cd out && sha256sum payload.bin | tee payload.sha256)
       - uses: actions/upload-artifact@v4
         with:
           name: payload-github-hosted
