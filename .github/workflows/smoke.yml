@@ -1,0 +1,33 @@
+name: Smoke
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  host:
+    name: host · github-hosted
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      cores: ${{ steps.probe.outputs.cores }}
+    steps:
+      - id: probe
+        name: Probe host
+        run: |
+          set -euo pipefail
+          echo "sha: $(git rev-parse HEAD 2>/dev/null || echo 'no checkout')"
+          echo "pwd: $PWD"
+          uname -a
+          echo "cores: $(nproc)"
+          free -m
+          df -h .
+          echo "cores=$(nproc)" >> "$GITHUB_OUTPUT"
+  consume:
+    name: consume · github-hosted
+    needs: host
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Read output from host
+        run: |
+          echo "host reported ${{ needs.host.outputs.cores }} cores"
+          test -n "${{ needs.host.outputs.cores }}"
