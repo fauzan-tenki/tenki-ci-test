@@ -1,0 +1,22 @@
+# CLO-5150: burst of concurrent runner jobs to exercise sandbox create batching on staging.
+name: Burst
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: "Run label recorded in job names"
+        required: true
+        default: "manual"
+jobs:
+  burst:
+    name: burst ${{ inputs.label }} · ${{ matrix.n }}
+    runs-on: tenki-staging-standard-small-2c-4g
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        n: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+    steps:
+      - name: Report start
+        run: echo "burst ${{ inputs.label }} job ${{ matrix.n }} on $(hostname) at $(date -u +%FT%T.%3NZ)"
